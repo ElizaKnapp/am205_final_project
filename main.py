@@ -1,10 +1,5 @@
 """
 AM205 Project: Spectral Mixing Times in Chord-Transition Markov Chains
-(Updated for 1959–1991, more songs/year, diagnostics & plots)
-
-Now excludes songs with fewer than 3 distinct chord states (n_states < 3),
-since 2-state chains tend to produce pathological tiny spectral gaps and
-blow up the t_spec bound.
 """
 
 from __future__ import annotations
@@ -614,14 +609,15 @@ def analyze_song_row(
     alpha: float = 1e-3,
     checkpoint_dir: Optional[Path] = None,
     debug_example: bool = False,
-    min_states: int = 3,   # <-- NEW: require more than 2 states
+    min_states: int = 3,
 ) -> Optional[SongChainResult]:
     """
     Full pipeline for one Kaggle song.
 
     Songs with n_states < min_states are skipped. In particular,
     with min_states=3 we exclude 1- and 2-state chains, which are
-    the main source of pathological tiny spectral gaps.
+    the main source of pathological tiny spectral gaps and
+    blow up the t_spec estimate.
 
     When debug_example=True, print the chord sequence and transition
     matrix to give an interpretable example of what the Markov chain
@@ -680,7 +676,7 @@ def analyze_song_row(
         )
         return None
 
-    # Optional interpretability: print chords + transition matrix for a couple songs
+    # Print chords + transition matrix for a couple songs
     if debug_example:
         print("\n=== Example Markov chain for song ===")
         print(f"{artist} - {title} ({year}, decade {decade})")
@@ -767,7 +763,7 @@ def run_song_level_analysis(
     """
     Driver for song-level analysis on a pre-selected set of songs (df_sel).
 
-    - Optionally resumes from checkpoint_dir/song_results.csv if resume=True.
+    - Resumes from checkpoint_dir/song_results.csv if resume=True.
     - After each successfully analyzed song, writes updated song_results.csv.
     - For interpretability, prints up to n_example_transition_matrices
       example transition matrices with chord labels.
@@ -1108,8 +1104,8 @@ def plot_tspec_vs_iters_loglog(df_results: pd.DataFrame) -> None:
     cbar = plt.colorbar(sc1)
     cbar.set_label("Number of chord states (n_states)", fontsize=10)
 
-    plt.xlabel(r"$\log_{10}(t_{\mathrm{spec}})$", fontsize=12)
-    plt.ylabel(r"$\log_{10}(t_{\mathrm{PM}})$", fontsize=12)
+    plt.xlabel("log10(t_spec)", fontsize=12)
+    plt.ylabel("log10(t_PM)", fontsize=12)
     plt.title("Spectral Mixing-Time Estimate vs Power-Method Iterations\nColor = number of chord states", fontsize=13)
 
     plt.legend()
@@ -1310,12 +1306,12 @@ def main():
 
     YEAR_START = 1959
     YEAR_END = 1991
-    MAX_SONGS_PER_YEAR = 20      # try to pull more songs per year if possible
+    MAX_SONGS_PER_YEAR = 20      # TODO: try to pull more songs per year if possible
     MAX_CANDIDATES_PER_YEAR = 100
 
     POWER_TOL = 1e-6
     ALPHA = 1e-3
-    MIN_STATES_FOR_ANALYSIS = 3  # <-- MORE THAN 2 STATES
+    MIN_STATES_FOR_ANALYSIS = 3
 
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     selected_songs_path = CHECKPOINT_DIR / "selected_songs.csv"
