@@ -13,7 +13,6 @@ from results import (
     plot_gap_vs_states,
     plot_year_trends,
     aggregate_by_year_from_song_results,
-    aggregate_by_decade_from_song_results,
 )
 
 # Set the global configuration
