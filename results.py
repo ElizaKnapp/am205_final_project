@@ -182,7 +182,7 @@ def plot_year_trends(aggregate_song_results: pd.DataFrame):
         ax2.plot(years, median_iters, marker="s", linestyle="--", alpha=0.8, color="red")
         ax2.tick_params(axis="y", labelcolor="red")
         
-        plt.title(f"Year-level trends in median spectral gap and median power-method iterations ({title_suffix})")
+        plt.title(f"Trends in median spectral gap and power-method iterations ({title_suffix})")
         fig.tight_layout()
         plt.savefig(filename, dpi=150) 
         plt.close()
