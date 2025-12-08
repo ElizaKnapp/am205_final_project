@@ -58,7 +58,6 @@ class SongAnalysis:
         self.alpha = alpha
         self.min_states = min_states
 
-
     def select_songs(self):
         """
         For each year in the range specified, scan up to max_candidates_per_year
@@ -76,7 +75,7 @@ class SongAnalysis:
             if df_year.empty:
                 print(f"No Kaggle songs for year {year}.")
                 continue
-
+                
             df_year_sorted = df_year.sort_values("rank").head(self.max_candidates_per_year)
             n_candidates = len(df_year_sorted)
 
@@ -87,8 +86,7 @@ class SongAnalysis:
                 if track_id is None or track_id not in self.billboard_dataset.tracks:
                     continue
 
-                track = self.billboard_dataset.tracks[track_id]
-                chords = self.billboard_dataset.get_chords_for_track(track)
+                chords = self.billboard_dataset.get_chords_for_track(track_id)
                 if len(chords) < 2:
                     continue
 
@@ -110,7 +108,7 @@ class SongAnalysis:
             raise ValueError("No usable songs found in the requested year range.")
 
         selected_songs = pd.concat(all_song_data, ignore_index=True)
-        print(f"Total selected songs across years {self.year_start}-{self.year_end}: {len(final_df)}")
+        print(f"Total selected songs across years {self.year_start}-{self.year_end}: {len(selected_songs)}")
         return selected_songs
     
     def _build_transition_matrix_from_chords(

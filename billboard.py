@@ -4,7 +4,15 @@ Billboard dataset loader & lookup
 
 import mirdata
 from collections import defaultdict
-from utils import clean_string_for_match, parse_tonic_string
+from utils import (
+    clean_string_for_match, 
+    parse_tonic_string, 
+    parse_harte_chord_label, 
+    roman_numeral_for_chord, 
+    simplify_roman_sequence, 
+    roman_numeral_for_chord, 
+    simplify_roman_sequence
+)
 
 class BillboardDataset:
     def __init__(self):
@@ -72,4 +80,15 @@ class BillboardDataset:
         if tonic_pc is None:
             print(f"Track {track_id} has no valid tonic.")
             return []
-        return labels, tonic_pc, mode
+
+        # Get roman numeral sequence
+        roman_frames = []
+        for label in labels:
+            root_pc, q = parse_harte_chord_label(label)
+            if root_pc is None or q is None:
+                continue
+            rn = roman_numeral_for_chord(root_pc, q, tonic_pc, mode)
+            roman_frames.append(rn)
+
+        roman_seq = simplify_roman_sequence(roman_frames)
+        return roman_seq
