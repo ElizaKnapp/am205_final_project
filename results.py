@@ -9,8 +9,6 @@ def print_small_gap_songs(song_results: pd.DataFrame, k: int = 10):
     """
     Print the top-k songs with the smallest spectral gaps for inspection.
     """
-    if song_results.empty:
-        return
     df_sorted = song_results.sort_values("spectral_gap").head(k)
     cols = [
         "year",
@@ -29,10 +27,6 @@ def regression_tspec_vs_iters(song_results: pd.DataFrame, filter_converged: bool
     """
     Simple linear regression: t_PM ~ a * t_spec + b.
     """
-    if song_results.empty:
-        print("df_results is empty; regression not possible.")
-        return {"slope": np.nan, "intercept": np.nan, "R2": np.nan}
-    
     # Filter the results
     df = song_results.copy()
     if filter_converged and "converged" in df.columns:
@@ -70,10 +64,6 @@ def plot_tspec_vs_iters_loglog(song_results: pd.DataFrame):
     Scatter plot (log–log) of t_spec vs t_PM, color-coded by number of states,
     and with marker shapes indicating convergence (circle = converged, x = not).
     """
-    if song_results.empty:
-        print("song_results is empty; skipping t_spec vs iters plot.")
-        return
-
     # Filter positive values for log scale
     df = song_results[
         (song_results["t_spec"] > 0) &
@@ -120,10 +110,6 @@ def plot_histograms(song_results: pd.DataFrame):
     """
     Plot histograms of spectral gaps and power-method iterations.
     """
-    if song_results.empty:
-        print("song_results is empty; skipping histograms.")
-        return
-
     # Histogram of the spectral gap values for each song
     plt.figure(figsize=(6, 4))
     plt.hist(song_results["spectral_gap"].values, bins=30, alpha=0.8)
@@ -143,3 +129,68 @@ def plot_histograms(song_results: pd.DataFrame):
     plt.tight_layout()
     plt.savefig("power_iterations_distribution.png", dpi=150)
     plt.close()
+
+def plot_gap_vs_states(song_results: pd.DataFrame):
+    """
+    Scatter plot of spectral gap vs number of states to see if larger
+    state spaces tend to have smaller gaps.
+    """
+    plt.figure(figsize=(6, 4))
+    plt.scatter(song_results["n_states"], song_results["spectral_gap"], alpha=0.7)
+    plt.xlabel("Number of chord states in song")
+    plt.ylabel("Spectral gap")
+    plt.title("Spectral gap vs number of chord states")
+    plt.tight_layout()
+    plt.savefig("spectral_gap_vs_states.png", dpi=150)
+    plt.close()
+
+def aggregate_by_year_from_song_results(song_results: pd.DataFrame):
+    """
+    Aggregate the song results by year.
+    """
+    grp = song_results.groupby("year")
+    df_year = grp.agg(
+        median_gap=("spectral_gap", "median"),
+        median_iters=("power_iters", "median"),
+    ).reset_index()
+    return df_year
+
+def plot_year_trends(aggregate_song_results: pd.DataFrame):
+    """
+    Plot trends in median spectral gap and median power-method iterations over years.
+    Creates three graphs: full range, 1960-1975, and 1975-1990.
+    """
+    df = aggregate_song_results.copy()
+    
+    def create_plot(df_subset, title_suffix, filename):
+        if df_subset.empty:
+            print(f"No data for {title_suffix}")
+            return
+        
+        years = df_subset["year"].values
+        median_gap = df_subset["median_gap"].values
+        median_iters = df_subset["median_iters"].values
+
+        fig, ax1 = plt.subplots(figsize=(7, 4))
+        ax1.set_xlabel("Year")
+        ax1.set_ylabel("Median spectral gap",  alpha=0.8, color="blue")
+        ax1.plot(years, median_gap, marker="o", alpha=0.8, color="blue")
+        ax1.tick_params(axis="y", labelcolor="blue")
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel("Median power-method iterations", alpha=0.8, color="red")
+        ax2.plot(years, median_iters, marker="s", linestyle="--", alpha=0.8, color="red")
+        ax2.tick_params(axis="y", labelcolor="red")
+        
+        plt.title(f"Year-level trends in median spectral gap and median power-method iterations ({title_suffix})")
+        fig.tight_layout()
+        plt.savefig(filename, dpi=150) 
+        plt.close()
+    
+    # All years plot
+    create_plot(df, "all years", "year_trends.png")
+    # Split graphs to normalize scales
+    df_early = df[(df["year"] >= 1960) & (df["year"] <= 1975)]
+    df_late = df[(df["year"] >= 1975) & (df["year"] <= 1990)]
+    create_plot(df_early, "1960-1975", "year_trends_1960_1975.png")
+    create_plot(df_late, "1975-1990", "year_trends_1975_1990.png")

@@ -10,6 +10,10 @@ from results import (
     regression_tspec_vs_iters,
     plot_tspec_vs_iters_loglog,
     plot_histograms,
+    plot_gap_vs_states,
+    plot_year_trends,
+    aggregate_by_year_from_song_results,
+    aggregate_by_decade_from_song_results,
 )
 
 # Set the global configuration
@@ -55,6 +59,9 @@ else:
 
 # Run analysis on the song results
 
+if song_results.empty:
+    raise ValueError("No songs were successfully analyzed.")
+
 # Print some of the most problematic tiny-gap songs
 print_small_gap_songs(song_results, k=10)
 # Can t_spec predict t_PM (on the reasonable subset)?
@@ -75,4 +82,9 @@ print(stats_filtered)
 # Visualize the results
 plot_tspec_vs_iters_loglog(song_results)
 plot_histograms(song_results)
-# plot_gap_vs_states(song_results)
+plot_gap_vs_states(song_results)
+
+# Plot results for year level song aggregation
+aggregate_song_results = aggregate_by_year_from_song_results(song_results)
+aggregate_song_results.to_csv("aggregate_song_results.csv", index=False)
+plot_year_trends(aggregate_song_results)
