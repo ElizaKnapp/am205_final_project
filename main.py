@@ -2,6 +2,7 @@
 Runs the song analysis pipeline.
 """
 
+import argparse
 import pandas as pd
 from billboard import BillboardDataset
 from song_analysis import SongAnalysis
@@ -26,7 +27,13 @@ POWER_METHOD_TOL = 1e-6
 ALPHA = 1e-3
 MIN_STATES = 3
 
-GATHER_DATA = False
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='Run the song analysis pipeline')
+parser.add_argument('--gather-data', action='store_true', default=False,
+                    help='Gather data by running the full analysis pipeline')
+args = parser.parse_args()
+
+GATHER_DATA = args.gather_data
 
 # Gather the song results
 if GATHER_DATA:
