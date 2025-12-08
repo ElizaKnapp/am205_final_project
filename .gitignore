@@ -7,3 +7,6 @@ checkpoints/
 # Python cache
 __pycache__/
 
+# Images
+*.png
+
