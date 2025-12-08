@@ -1,6 +1,7 @@
 """
 Class that performs song-level analysis.
 """
+
 import numpy as np
 import pandas as pd
 from billboard import BillboardDataset
@@ -14,7 +15,7 @@ class SongAnalysis:
         year_end: int,
         max_songs_per_year: int,
         max_candidates_per_year: int,
-        power_tol: float,
+        power_method_tol: float,
         alpha: float,
         min_states: int,
     ):
@@ -53,7 +54,7 @@ class SongAnalysis:
         self.year_end = year_end
         self.max_songs_per_year = max_songs_per_year
         self.max_candidates_per_year = max_candidates_per_year
-        self.power_tol = power_tol
+        self.power_method_tol = power_method_tol
         self.alpha = alpha
         self.min_states = min_states
 
@@ -147,6 +148,77 @@ class SongAnalysis:
         P = P / P.sum(axis=1, keepdims=True)
         return P, unique_chords
 
+    def _compute_stationary_distribution_linear(
+        self,
+        P: np.ndarray,
+    ):
+        """
+        Compute stationary distribution pi by solving (P^T - I) pi = 0
+        with sum(pi) = 1.
+        """
+        n = P.shape[0]
+        PT = P.T
+        A = PT - np.eye(n)
+        A[-1, :] = 1.0
+        b = np.zeros(n)
+        b[-1] = 1.0
+        pi = np.linalg.solve(A, b)
+        pi = np.maximum(pi, 0.0)
+        pi = pi / pi.sum()
+        return pi
+
+    def _power_method_to_stationary(
+        self,
+        P: np.ndarray,
+        pi_exact: np.ndarray,
+    ):
+        """
+        Run power method mu_{k+1}^T = mu_k^T P.
+        """
+        max_iter = 10**6
+        mu = np.ones(P.shape[0])
+        mu = mu / mu.sum()
+
+        for k in range(1, max_iter + 1):
+            mu = mu @ P
+            dist = np.linalg.norm(mu - pi_exact, ord=1)
+            if dist < self.power_method_tol:
+                return mu, k, True
+
+        print(f"Power method did not converge within {max_iter} iterations (final dist={dist:.3e}).")
+        return mu, max_iter, False
+
+    def _compute_spectral_gap(
+        self,
+        P: np.ndarray,
+    ):
+        """
+        Compute |lambda_2| and spectral gap gamma = 1 - |lambda_2|.
+        """
+        evals, _ = np.linalg.eig(P.T)
+        evals = np.asarray(evals)
+        idx = np.argsort(-np.abs(evals))
+        evals_sorted = evals[idx]
+        if len(evals_sorted) < 2:
+            return 0.0, 1.0
+        lambda2 = evals_sorted[1]
+        lambda2_abs = float(np.abs(lambda2))
+        gap = 1.0 - lambda2_abs
+        return lambda2_abs, gap
+
+    def _spectral_mixing_time_estimate(
+        self,
+        spectral_gap: float,
+    ):
+        """
+        Spectral mixing-time estimate t_spec ~ log(a2 / power_method_tol) / spectral_gap.
+        """
+        if spectral_gap <= 0:
+            return float("inf")
+        # We use a2 = 1.0 because it is a measure of the initial matrix to the stationary distribution which can have 1 as a baseline
+        C = np.log(1.0 / self.power_method_tol)
+        return float(C/spectral_gap)
+
     def _analyze_song_row(
         self,
         row: pd.Series,
@@ -182,13 +254,27 @@ class SongAnalysis:
             print(f"Skipping song {artist} - {title} ({year}): only {n_states} states (< {self.min_states}).")
             return None
 
-        pi_exact = compute_stationary_distribution_linear(P)
-        _, power_iters, converged = power_method_to_stationary(
+        # Compute the stationary distribution exactly and then using the power method
+        pi_exact = self._compute_stationary_distribution_linear(P)
+        _, power_iters, converged = self._power_method_to_stationary(
             P, pi_exact=pi_exact,
         )
 
-        lambda2_abs, gap = compute_spectral_gap(P)
-        t_spec = spectral_mixing_time_estimate(gap, a2_estimate=1.0)
+        lambda2_abs, spectral_gap = self._compute_spectral_gap(P)
+        t_spec = self._spectral_mixing_time_estimate(spectral_gap)
+        return {
+            "title": title,
+            "artist": artist,
+            "year": year,
+            "decade": decade,
+            "n_states": n_states,
+            "spectral_gap": spectral_gap,
+            "lambda2_abs": lambda2_abs,
+            "power_iters": power_iters,
+            "tol": self.power_method_tol,
+            "t_spec": t_spec,
+            "converged": converged,
+        }
 
     def analyze_songs(
         self, 
@@ -205,10 +291,11 @@ class SongAnalysis:
             print("df_sel is empty; no songs to analyze.")
             return pd.DataFrame()
 
-        results_new = []
+        # Analyze each song
+        results = []
         for _, row in selected_songs.iterrows():
-            key = (int(row["year"]), str(row["artist"]), str(row["title"]))
-
             result_for_song = self._analyze_song_row(row)
             if result_for_song is not None:
-                results_new.append(result_for_song)
+                results.append(result_for_song)
+        df_results = pd.DataFrame(results)
+        return df_results

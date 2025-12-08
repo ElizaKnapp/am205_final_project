@@ -4,3 +4,6 @@
 # Checkpoints
 checkpoints/
 
+# Python cache
+__pycache__/
+
