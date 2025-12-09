@@ -75,7 +75,7 @@ stats_all = regression_tspec_vs_iters(
     song_results, filter_converged=False, max_tspec=None
 )
 print()
-print("\nRegression on all songs (including non-converged and huge t_spec):")
+print("Regression on all songs (including non-converged and huge t_spec):")
 print(stats_all)
 
 stats_filtered = regression_tspec_vs_iters(
